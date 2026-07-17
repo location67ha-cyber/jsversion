@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Connexion</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body style="background:var(--vert);min-height:100vh;display:flex;align-items:center;justify-content:center">
+
+<div class="card" style="width:100%;max-width:400px;margin:1rem">
+  <div class="text-center mb-3">
+    <div style="font-size:3rem;margin-bottom:0.5rem">🚗</div>
+    <h1 style="font-size:1.3rem;color:var(--vert)">Espace Admin</h1>
+    <p class="text-muted text-sm">Location Voiture Madagascar</p>
+  </div>
+
+  <form onsubmit="login(event)">
+    <div class="form-group">
+      <label class="form-label">Identifiant</label>
+      <input class="form-control" id="username" placeholder="admin" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe</label>
+      <input type="password" class="form-control" id="password" placeholder="••••••••" required>
+    </div>
+
+    <div id="erreur" class="alert alert-danger hidden"></div>
+
+    <button type="submit" class="btn btn-primary btn-full mt-2" id="btn-login">
+      🔐 Se connecter
+    </button>
+  </form>
+
+  <div class="text-center mt-2 text-xs text-muted">Accès réservé à l'administrateur</div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script>
+// Déjà connecté ?
+if (isAdminLoggedIn()) window.location.href = 'index.html'
+
+function login(e) {
+  e.preventDefault()
+  const username = document.getElementById('username').value
+  const password = document.getElementById('password').value
+  const btn = document.getElementById('btn-login')
+  const erreur = document.getElementById('erreur')
+
+  btn.disabled = true
+  btn.textContent = 'Connexion...'
+
+  if (adminLogin(username, password)) {
+    window.location.href = 'index.html'
+  } else {
+    erreur.textContent = '❌ Identifiants incorrects'
+    erreur.classList.remove('hidden')
+    btn.disabled = false
+    btn.textContent = '🔐 Se connecter'
+  }
+}
+</script>
+</body>
+</html>
