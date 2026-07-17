@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Réservations Admin</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="admin-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div style="font-size:1.5rem">🚗</div><div class="brand-name">Location Voiture</div><div class="brand-sub">Madagascar — Admin</div></div>
+    <nav class="sidebar-nav">
+      <a href="index.html" class="sidebar-link">📊 Dashboard</a>
+      <a href="reservations.html" class="sidebar-link active">📋 Réservations</a>
+      <a href="vehicules.html" class="sidebar-link">🚗 Véhicules</a>
+      <a href="planning.html" class="sidebar-link">📅 Planning</a>
+      <a href="maintenance.html" class="sidebar-link">🔧 Maintenance</a>
+      <a href="factures.html" class="sidebar-link">📄 Factures</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="../index.html" class="sidebar-link" style="font-size:12px">🌐 Voir le site</a>
+      <button onclick="adminLogout()" class="sidebar-link" style="background:none;border:none;cursor:pointer;color:#fca5a5;width:100%;text-align:left;font-size:13px">🚪 Déconnexion</button>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <div class="admin-header" style="display:flex;justify-content:space-between;align-items:center">
+      <h1>📋 Réservations</h1>
+    </div>
+
+    <!-- Filtres -->
+    <div class="flex gap-1 mb-3" style="flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" onclick="filtrer('TOUS')">Toutes (<span id="count-tous">0</span>)</button>
+      <button class="btn btn-secondary btn-sm" onclick="filtrer('EN_ATTENTE')">⏳ En attente (<span id="count-attente">0</span>)</button>
+      <button class="btn btn-secondary btn-sm" onclick="filtrer('VALIDÉE')">✅ Validées (<span id="count-validee">0</span>)</button>
+      <button class="btn btn-secondary btn-sm" onclick="filtrer('ANNULÉE')">❌ Annulées (<span id="count-annulee">0</span>)</button>
+    </div>
+
+    <div class="card table-container">
+      <table id="table-reservations">
+        <thead>
+          <tr>
+            <th>ID</th><th>Client</th><th>Voiture</th><th>Trajet</th>
+            <th>Période</th><th style="text-align:right">Total</th>
+            <th style="text-align:right">Payé</th><th>Statut</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-reservations">
+          <tr><td colspan="9" class="text-muted text-center">Chargement...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL DÉTAIL -->
+<div id="modal-detail" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-titre">Détail réservation</h2>
+      <button class="modal-close" onclick="fermerModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-contenu"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase-client.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+requireAdmin()
+
+let toutesReservations = []
+let filtreActuel = 'TOUS'
+
+async function charger() {
+  const { data } = await db.from('reservations')
+    .select('*, clients(*), vehicules(*)')
+    .order('created_at', { ascending: false })
+  toutesReservations = data || []
+  mettreAJourCompteurs()
+  afficher(filtreActuel)
+}
+
+function mettreAJourCompteurs() {
+  document.getElementById('count-tous').textContent = toutesReservations.length
+  document.getElementById('count-attente').textContent = toutesReservations.filter(r => r.statut_resa === 'EN_ATTENTE').length
+  document.getElementById('count-validee').textContent = toutesReservations.filter(r => r.statut_resa === 'VALIDÉE').length
+  document.getElementById('count-annulee').textContent = toutesReservations.filter(r => r.statut_resa === 'ANNULÉE').length
+}
+
+function filtrer(f) {
+  filtreActuel = f
+  afficher(f)
+}
+
+function badgeStatut(r) {
+  if (r.statut_resa === 'EN_ATTENTE') return '<span class="badge badge-jaune">⏳ En attente</span>'
+  if (r.statut_resa === 'VALIDÉE' && r.statut_calendrier === 'RESERVE') return '<span class="badge badge-rouge">🔴 Réservé</span>'
+  if (r.statut_resa === 'VALIDÉE' && r.statut_calendrier === 'PRE_RESERVE') return '<span class="badge badge-jaune">🟡 Pré-réservé</span>'
+  if (r.statut_resa === 'ANNULÉE') return '<span class="badge badge-orange">❌ Annulé</span>'
+  return `<span class="badge badge-gris">${r.statut_resa}</span>`
+}
+
+function afficher(filtre) {
+  const liste = filtre === 'TOUS' ? toutesReservations : toutesReservations.filter(r => r.statut_resa === filtre)
+  const tbody = document.getElementById('tbody-reservations')
+
+  if (!liste.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="text-muted text-center">Aucune réservation</td></tr>'
+    return
+  }
+
+  tbody.innerHTML = liste.map(r => `
+    <tr>
+      <td><span class="font-bold text-vert">${r.id}</span></td>
+      <td>
+        <div class="font-bold text-sm">${r.clients?.nom} ${r.clients?.prenom || ''}</div>
+        <div class="text-xs text-muted">${r.clients?.contact || ''}</div>
+      </td>
+      <td>
+        <div class="text-sm">${r.vehicules?.nom}</div>
+        <div class="text-xs text-muted">${r.avec_chauffeur ? '👤 Avec chauffeur' : '🚗 Sans'}</div>
+      </td>
+      <td class="text-xs">
+        <div>📍 ${r.depart}</div>
+        <div>🏁 ${r.destination}</div>
+      </td>
+      <td class="text-xs">
+        <div>${r.date_debut}</div>
+        <div>${r.date_fin}</div>
+        <div class="text-muted">${r.duree}j — ${r.type_applique}</div>
+      </td>
+      <td style="text-align:right" class="font-bold">${r.total_a_payer?.toLocaleString()}</td>
+      <td style="text-align:right">
+        <div class="${r.reste > 0 ? 'text-rouge' : 'text-vert'} font-bold">${r.montant_paye?.toLocaleString()}</div>
+        ${r.reste > 0 ? `<div class="text-xs text-rouge">Reste: ${r.reste?.toLocaleString()}</div>` : ''}
+      </td>
+      <td>${badgeStatut(r)}</td>
+      <td>
+        <div class="flex gap-1">
+          <button class="btn btn-sm btn-secondary" onclick="voirDetail('${r.id}')">👁️</button>
+          ${r.statut_resa === 'EN_ATTENTE' ? `
+            <button class="btn btn-sm btn-primary" onclick="valider('${r.id}')">✅</button>
+            <button class="btn btn-sm btn-danger" onclick="annuler('${r.id}')">❌</button>
+          ` : ''}
+        </div>
+      </td>
+    </tr>
+  `).join('')
+}
+
+async function valider(id) {
+  if (!confirm('Valider cette réservation ?')) return
+  const r = toutesReservations.find(x => x.id === id)
+  const reste = Math.max(0, r.total_a_payer - r.montant_paye)
+  await db.from('reservations').update({
+    statut_resa: 'VALIDÉE',
+    statut_calendrier: r.montant_paye > 0 ? 'RESERVE' : 'PRE_RESERVE',
+    statut_paiement: reste === 0 ? 'PAYÉ' : 'NON PAYÉ',
+    updated_at: new Date().toISOString(),
+  }).eq('id', id)
+  fermerModal()
+  charger()
+}
+
+async function annuler(id) {
+  if (!confirm('Annuler cette réservation ?')) return
+  await db.from('reservations').update({
+    statut_resa: 'ANNULÉE',
+    statut_calendrier: 'DISPONIBLE',
+    updated_at: new Date().toISOString(),
+  }).eq('id', id)
+  fermerModal()
+  charger()
+}
+
+async function mettreAJourPaiement(id, montant, total) {
+  const reste = Math.max(0, total - montant)
+  await db.from('reservations').update({
+    montant_paye: montant,
+    reste,
+    statut_paiement: reste === 0 ? 'PAYÉ' : 'NON PAYÉ',
+    statut_calendrier: montant > 0 ? 'RESERVE' : 'PRE_RESERVE',
+    updated_at: new Date().toISOString(),
+  }).eq('id', id)
+  charger()
+  alert('Paiement mis à jour !')
+}
+
+function voirDetail(id) {
+  const r = toutesReservations.find(x => x.id === id)
+  if (!r) return
+
+  document.getElementById('modal-titre').textContent = `Détail — ${r.id}`
+  document.getElementById('modal-contenu').innerHTML = `
+    <div class="grid-2 mb-3">
+      <div>
+        <div class="font-bold text-sm mb-2" style="color:var(--vert)">👤 Client</div>
+        <div class="text-sm">${r.clients?.nom} ${r.clients?.prenom || ''}</div>
+        <div class="text-xs text-muted">${r.clients?.contact || '—'}</div>
+        <div class="text-xs text-muted">${r.clients?.email || '—'}</div>
+        <div class="text-xs text-muted">${r.clients?.adresse || '—'}</div>
+        <div class="text-xs text-muted">CIN: ${r.clients?.cin_permis || '—'}</div>
+      </div>
+      <div>
+        <div class="font-bold text-sm mb-2" style="color:var(--vert)">🚗 Véhicule</div>
+        <div class="text-sm">${r.vehicules?.nom}</div>
+        <div class="text-xs text-muted">${r.avec_chauffeur ? 'Avec chauffeur' : 'Sans chauffeur'}</div>
+        <div class="font-bold text-sm mt-2 mb-1" style="color:var(--vert)">🗺️ Trajet</div>
+        <div class="text-xs">📍 ${r.depart}</div>
+        <div class="text-xs">🏁 ${r.destination}</div>
+      </div>
+    </div>
+
+    <div style="background:#f9fafb;border-radius:8px;padding:1rem;margin-bottom:1rem">
+      <div class="font-bold text-sm mb-2">📅 Réservation</div>
+      <div class="grid-2 text-sm">
+        <div>Du: <strong>${r.date_debut}</strong></div>
+        <div>Au: <strong>${r.date_fin}</strong></div>
+        <div>Durée: <strong>${r.duree} jour(s)</strong></div>
+        <div>Type: <strong>${r.type_applique}</strong></div>
+        ${r.heure_debut ? `<div>Départ: <strong>${r.heure_debut}</strong></div>` : ''}
+        ${r.heure_fin ? `<div>Retour: <strong>${r.heure_fin}</strong></div>` : ''}
+      </div>
+      ${r.upgrade_24h ? `<div class="alert alert-warning mt-2 text-xs">⚠️ ${r.motif_upgrade}</div>` : ''}
+    </div>
+
+    <div style="background:#f0fdf4;border-radius:8px;padding:1rem;margin-bottom:1rem">
+      <div class="font-bold text-sm mb-2">💰 Paiement</div>
+      <div class="grid-2 text-sm">
+        <div>Total: <strong>${r.total_a_payer?.toLocaleString()} Ar</strong></div>
+        <div>Payé: <strong>${r.montant_paye?.toLocaleString()} Ar</strong></div>
+        <div>Reste: <strong class="text-rouge">${r.reste?.toLocaleString()} Ar</strong></div>
+        <div>Statut: ${badgeStatut(r)}</div>
+      </div>
+      ${r.statut_resa === 'VALIDÉE' && r.reste > 0 ? `
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb">
+          <div class="font-bold text-xs mb-1">Mettre à jour le paiement :</div>
+          <div class="flex gap-2">
+            <input type="number" id="nouveau-paiement" class="form-control" value="${r.montant_paye}" style="flex:1">
+            <button class="btn btn-primary btn-sm" onclick="mettreAJourPaiement('${r.id}', parseInt(document.getElementById('nouveau-paiement').value), ${r.total_a_payer})">
+              Mettre à jour
+            </button>
+          </div>
+        </div>
+      ` : ''}
+    </div>
+
+    ${r.notes ? `<div class="alert alert-warning text-sm"><strong>📝 Notes:</strong> ${r.notes}</div>` : ''}
+
+    <div class="flex gap-2 mt-3">
+      ${r.statut_resa === 'EN_ATTENTE' ? `
+        <button class="btn btn-primary" onclick="valider('${r.id}')">✅ Valider</button>
+        <button class="btn btn-danger" onclick="annuler('${r.id}')">❌ Annuler</button>
+      ` : ''}
+      <a href="factures.html?id=${r.id}" class="btn btn-secondary">📄 Facture</a>
+    </div>
+  `
+  document.getElementById('modal-detail').classList.remove('hidden')
+}
+
+function fermerModal() {
+  document.getElementById('modal-detail').classList.add('hidden')
+}
+
+charger()
+</script>
+</body>
+</html>
