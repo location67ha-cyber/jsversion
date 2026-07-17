@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Réserver — Location Voiture Madagascar</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="index.html" class="navbar-brand">
+    <span style="font-size:1.5rem">🚗</span>
+    <div>
+      <div class="logo-text">Location Voiture Madagascar</div>
+      <div class="logo-sub">Avec ou Sans Chauffeur</div>
+    </div>
+  </a>
+  <div class="navbar-links">
+    <a href="index.html">Accueil</a>
+    <a href="vehicules.html">Nos Voitures</a>
+    <a href="reserver.html">Réserver</a>
+    <a href="infos.html">Infos & Tarifs</a>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container" style="max-width:700px">
+    <h1 class="section-title">Réserver un véhicule</h1>
+    <p class="section-sub">Votre demande sera validée par notre équipe</p>
+
+    <!-- Étapes -->
+    <div class="steps" id="steps-indicator">
+      <div class="step-num active" id="step-1-num">1</div>
+      <div class="step-line inactive" id="line-1"></div>
+      <div class="step-num inactive" id="step-2-num">2</div>
+      <div class="step-line inactive" id="line-2"></div>
+      <div class="step-num inactive" id="step-3-num">3</div>
+      <div class="step-line inactive" id="line-3"></div>
+      <div class="step-num inactive" id="step-4-num">4</div>
+    </div>
+
+    <div id="erreur-global" class="alert alert-danger hidden"></div>
+
+    <!-- ═══ ÉTAPE 1 — TRAJET & DATES ═══ -->
+    <div id="etape-1" class="card">
+      <h2 style="color:var(--vert);margin-bottom:1.5rem">📍 Trajet & Dates</h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Lieu de départ *</label>
+          <input class="form-control" id="depart" placeholder="Ex: Antananarivo">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Destination *</label>
+          <input class="form-control" id="destination" placeholder="Ex: Toamasina">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date de début *</label>
+          <input type="date" class="form-control" id="date-debut">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date de fin *</label>
+          <input type="date" class="form-control" id="date-fin">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Type de location *</label>
+        <div class="type-selector">
+          <div class="type-btn selected" onclick="selectType('JOUR')">
+            <div class="type-icon">🌞</div>
+            <div class="type-label">JOUR</div>
+            <div class="type-sub">07h → 19h</div>
+          </div>
+          <div class="type-btn" onclick="selectType('NUIT')">
+            <div class="type-icon">🌙</div>
+            <div class="type-label">NUIT</div>
+            <div class="type-sub">19h → 06h</div>
+          </div>
+          <div class="type-btn" onclick="selectType('24H')">
+            <div class="type-icon">🕐</div>
+            <div class="type-label">24H</div>
+            <div class="type-sub">Journée complète</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Horaires JOUR/NUIT -->
+      <div id="horaires-section" class="form-row">
+        <div class="form-group">
+          <label class="form-label">Heure de départ</label>
+          <input type="time" class="form-control" id="heure-debut" value="07:00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Heure de retour</label>
+          <input type="time" class="form-control" id="heure-fin" value="19:00">
+        </div>
+      </div>
+
+      <!-- Option 24H -->
+      <div id="option-24h-section" class="form-group hidden">
+        <label class="form-label">Option 24H</label>
+        <div class="type-selector" style="grid-template-columns:1fr 1fr">
+          <div class="type-btn selected" onclick="selectOption24h('MATIN')">
+            <div class="type-icon">🌅</div>
+            <div class="type-label">Option Matin</div>
+            <div class="type-sub">07h00 → 06h00 (lendemain)</div>
+          </div>
+          <div class="type-btn" onclick="selectOption24h('SOIR')">
+            <div class="type-icon">🌆</div>
+            <div class="type-label">Option Soir</div>
+            <div class="type-sub">19h00 → 18h00 (lendemain)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Avertissement horaire -->
+      <div id="avertissement-horaire" class="alert alert-warning hidden"></div>
+
+      <button class="btn btn-primary btn-full mt-2" onclick="allerEtape2()">Suivant →</button>
+    </div>
+
+    <!-- ═══ ÉTAPE 2 — VÉHICULE ═══ -->
+    <div id="etape-2" class="card hidden">
+      <h2 style="color:var(--vert);margin-bottom:1.5rem">🚗 Choix du véhicule</h2>
+
+      <div class="form-group">
+        <label class="form-label">Véhicule *</label>
+        <select class="form-control" id="vehicule-select" onchange="onVehiculeChange()">
+          <option value="">-- Sélectionner un véhicule --</option>
+        </select>
+      </div>
+
+      <div id="option-chauffeur-section" class="form-group hidden">
+        <label class="form-label">Option chauffeur</label>
+        <div class="type-selector" style="grid-template-columns:1fr 1fr">
+          <div class="type-btn selected" onclick="selectChauffeur(false)">
+            <div class="type-icon">🚗</div>
+            <div class="type-label">Sans chauffeur</div>
+          </div>
+          <div class="type-btn" id="btn-avec-chauffeur" onclick="selectChauffeur(true)">
+            <div class="type-icon">👤</div>
+            <div class="type-label">Avec chauffeur</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="calcul-section" class="hidden">
+        <div class="prix-box">
+          <div class="text-sm font-bold mb-1" style="color:var(--vert)">💰 Estimation tarifaire</div>
+          <div class="text-sm mb-1" id="calcul-detail"></div>
+          <div class="prix-total" id="calcul-total"></div>
+        </div>
+      </div>
+
+      <div id="calcul-erreur" class="alert alert-danger hidden"></div>
+
+      <div class="flex gap-2 mt-3">
+        <button class="btn btn-secondary" onclick="allerEtape(1)">← Retour</button>
+        <button class="btn btn-primary" style="flex:1" onclick="allerEtape3()" id="btn-etape3">Suivant →</button>
+      </div>
+    </div>
+
+    <!-- ═══ ÉTAPE 3 — CLIENT ═══ -->
+    <div id="etape-3" class="card hidden">
+      <h2 style="color:var(--vert);margin-bottom:1.5rem">👤 Vos informations</h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nom *</label>
+          <input class="form-control" id="nom" placeholder="NOM">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Prénom</label>
+          <input class="form-control" id="prenom" placeholder="Prénom">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Téléphone *</label>
+          <input class="form-control" id="contact" placeholder="034 XX XXX XX">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input type="email" class="form-control" id="email" placeholder="email@exemple.com">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Adresse</label>
+        <input class="form-control" id="adresse" placeholder="Votre adresse">
+      </div>
+      <div class="form-group">
+        <label class="form-label">CIN ou Numéro de permis</label>
+        <input class="form-control" id="cin-permis" placeholder="Numéro CIN ou permis">
+      </div>
+
+      <div class="flex gap-2 mt-3">
+        <button class="btn btn-secondary" onclick="allerEtape(2)">← Retour</button>
+        <button class="btn btn-primary" style="flex:1" onclick="allerEtape4()">Suivant →</button>
+      </div>
+    </div>
+
+    <!-- ═══ ÉTAPE 4 — PAIEMENT & CONDITIONS ═══ -->
+    <div id="etape-4" class="card hidden">
+      <h2 style="color:var(--vert);margin-bottom:1.5rem">💰 Paiement & Conditions</h2>
+
+      <!-- Récapitulatif -->
+      <div class="card mb-3" style="background:#f9fafb;padding:1rem">
+        <div class="font-bold text-sm mb-2">📋 Récapitulatif</div>
+        <div id="recap-content" class="text-sm"></div>
+      </div>
+
+      <!-- Acompte -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Acompte versé (Ar)</label>
+          <input type="number" class="form-control" id="acompte" placeholder="0" min="0" oninput="calculerReste()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reste à payer</label>
+          <div class="form-control" id="reste-display" style="background:#f9fafb;font-weight:700;color:var(--rouge)">0 Ar</div>
+        </div>
+      </div>
+
+      <div id="avertissement-acompte" class="alert alert-warning hidden">
+        ⚠️ <strong>Sans acompte :</strong> votre réservation sera PRÉ-RÉSERVÉE. La date reste disponible pour d'autres clients.
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Notes / Demandes particulières</label>
+        <textarea class="form-control" id="notes" rows="3" placeholder="Informations complémentaires..."></textarea>
+      </div>
+
+      <!-- CONDITIONS OBLIGATOIRES -->
+      <div class="alert alert-warning mb-2">
+        <div class="font-bold mb-2">⚠️ Conditions obligatoires — Toutes les cases doivent être cochées</div>
+
+        <label class="condition-item">
+          <input type="checkbox" id="cond-carburant" onchange="verifierConditions()">
+          <span class="text-sm">⛽ <strong>Je reconnais que le carburant est entièrement à ma charge</strong> pendant toute la durée de la location.</span>
+        </label>
+
+        <div id="conditions-chauffeur" class="hidden">
+          <label class="condition-item">
+            <input type="checkbox" id="cond-repas" onchange="verifierConditions()">
+            <span class="text-sm">🍽️ <strong>Je reconnais que les repas du chauffeur sont à ma charge</strong> pendant toute la durée de la location.</span>
+          </label>
+          <label class="condition-item">
+            <input type="checkbox" id="cond-hebergement" onchange="verifierConditions()">
+            <span class="text-sm">🏨 <strong>Je reconnais que l'hébergement du chauffeur est à ma charge</strong> si la location nécessite une ou plusieurs nuits.</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex gap-2 mt-3">
+        <button class="btn btn-secondary" onclick="allerEtape(3)">← Retour</button>
+        <button class="btn btn-primary" style="flex:1" id="btn-soumettre" onclick="soumettre()" disabled>
+          ✅ Envoyer ma demande
+        </button>
+      </div>
+    </div>
+
+    <!-- SUCCÈS -->
+    <div id="succes-section" class="card hidden text-center">
+      <div style="font-size:4rem;margin-bottom:1rem">✅</div>
+      <h2 style="color:var(--vert);margin-bottom:1rem">Demande envoyée !</h2>
+      <p class="text-muted mb-3">Votre demande a été soumise. Un message WhatsApp a été ouvert pour notifier notre équipe.</p>
+      <div class="alert alert-warning mb-3">
+        <strong>⚠️ Important :</strong><br>
+        • Votre réservation est <strong>EN ATTENTE DE VALIDATION</strong><br>
+        • Vous recevrez une confirmation après validation<br>
+        <span id="msg-acompte"></span>
+      </div>
+      <a href="index.html" class="btn btn-primary">Retour à l'accueil</a>
+    </div>
+
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/calcul-horaire.js"></script>
+<script src="js/calcul-tarif.js"></script>
+<script src="js/whatsapp.js"></script>
+<script>
+// ── ÉTAT GLOBAL ──
+let etat = {
+  etape: 1,
+  typeDemande: 'JOUR',
+  option24h: 'MATIN',
+  avecChauffeur: false,
+  vehicules: [],
+  vehiculeSelectionne: null,
+  calcul: null,
+}
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', async () => {
+  // Date min = aujourd'hui
+  const today = new Date().toISOString().split('T')[0]
+  document.getElementById('date-debut').min = today
+  document.getElementById('date-fin').min = today
+
+  // Pré-sélection depuis URL
+  const params = new URLSearchParams(window.location.search)
+  const vehiculeId = params.get('vehicule')
+
+  // Charger véhicules
+  const { data } = await db.from('vehicules').select('*').eq('actif', true).order('nom')
+  etat.vehicules = data || []
+
+  const select = document.getElementById('vehicule-select')
+  etat.vehicules.forEach(v => {
+    const opt = document.createElement('option')
+    opt.value = v.id
+    opt.textContent = `${v.nom} — ${v.prix_normal.toLocaleString()} Ar/jour`
+    select.appendChild(opt)
+  })
+
+  if (vehiculeId) {
+    select.value = vehiculeId
+    onVehiculeChange()
+  }
+
+  // Listeners
+  document.getElementById('date-debut').addEventListener('change', mettreAJourCalcul)
+  document.getElementById('date-fin').addEventListener('change', mettreAJourCalcul)
+  document.getElementById('heure-debut').addEventListener('change', mettreAJourCalcul)
+  document.getElementById('heure-fin').addEventListener('change', mettreAJourCalcul)
+})
+
+// ── SÉLECTION TYPE ──
+function selectType(type) {
+  etat.typeDemande = type
+  document.querySelectorAll('.type-selector .type-btn').forEach((btn, i) => {
+    if (i < 3) btn.classList.remove('selected')
+  })
+  event.currentTarget.classList.add('selected')
+
+  const horaires = document.getElementById('horaires-section')
+  const opt24h = document.getElementById('option-24h-section')
+
+  if (type === '24H') {
+    horaires.classList.add('hidden')
+    opt24h.classList.remove('hidden')
+  } else {
+    horaires.classList.remove('hidden')
+    opt24h.classList.add('hidden')
+    document.getElementById('heure-debut').value = type === 'JOUR' ? '07:00' : '19:00'
+    document.getElementById('heure-fin').value = type === 'JOUR' ? '19:00' : '06:00'
+  }
+  mettreAJourCalcul()
+}
+
+function selectOption24h(opt) {
+  etat.option24h = opt
+  document.querySelectorAll('#option-24h-section .type-btn').forEach(btn => btn.classList.remove('selected'))
+  event.currentTarget.classList.add('selected')
+  mettreAJourCalcul()
+}
+
+function selectChauffeur(avec) {
+  etat.avecChauffeur = avec
+  document.querySelectorAll('#option-chauffeur-section .type-btn').forEach(btn => btn.classList.remove('selected'))
+  event.currentTarget.classList.add('selected')
+  mettreAJourCalcul()
+}
+
+// ── CHANGEMENT VÉHICULE ──
+function onVehiculeChange() {
+  const id = parseInt(document.getElementById('vehicule-select').value)
+  etat.vehiculeSelectionne = etat.vehicules.find(v => v.id === id) || null
+
+  const chauffeurSection = document.getElementById('option-chauffeur-section')
+  const btnAvec = document.getElementById('btn-avec-chauffeur')
+
+  if (etat.vehiculeSelectionne) {
+    chauffeurSection.classList.remove('hidden')
+    const hasChauffeur = etat.vehiculeSelectionne.prix_chauffeur_jour ||
+                         etat.vehiculeSelectionne.prix_chauffeur_nuit ||
+                         etat.vehiculeSelectionne.prix_chauffeur_24h
+    if (!hasChauffeur) {
+      btnAvec.style.opacity = '0.4'
+      btnAvec.style.cursor = 'not-allowed'
+      btnAvec.onclick = null
+      btnAvec.innerHTML = '<div class="type-icon">👤</div><div class="type-label">Avec chauffeur</div><div class="type-sub" style="color:red">Non disponible</div>'
+    } else {
+      btnAvec.style.opacity = '1'
+      btnAvec.style.cursor = 'pointer'
+      btnAvec.onclick = () => selectChauffeur(true)
+    }
+  }
+  mettreAJourCalcul()
+}
+
+// ── CALCUL PRIX ──
+function mettreAJourCalcul() {
+  if (!etat.vehiculeSelectionne) return
+
+  const dateDebut = document.getElementById('date-debut').value
+  const dateFin = document.getElementById('date-fin').value
+  if (!dateDebut || !dateFin) return
+
+  const duree = diffJours(dateDebut, dateFin)
+  const heureDebut = document.getElementById('heure-debut').value || '07:00'
+  const heureFin = document.getElementById('heure-fin').value || '19:00'
+
+  const result = calculerPrix(
+    etat.vehiculeSelectionne, duree,
+    etat.typeDemande, heureDebut, heureFin,
+    etat.option24h, etat.avecChauffeur, 0
+  )
+
+  etat.calcul = { ...result, duree }
+
+  const avertDiv = document.getElementById('avertissement-horaire')
+  if (result.avertissement) {
+    avertDiv.textContent = result.avertissement
+    avertDiv.classList.remove('hidden')
+  } else {
+    avertDiv.classList.add('hidden')
+  }
+
+  const calculSection = document.getElementById('calcul-section')
+  const calculErreur = document.getElementById('calcul-erreur')
+
+  if (result.erreur) {
+    calculSection.classList.add('hidden')
+    calculErreur.textContent = '❌ ' + result.erreur
+    calculErreur.classList.remove('hidden')
+  } else {
+    calculSection.classList.remove('hidden')
+    calculErreur.classList.add('hidden')
+    document.getElementById('calcul-detail').textContent = result.detail
+    document.getElementById('calcul-total').textContent = `Total : ${result.total.toLocaleString()} Ar`
+  }
+}
+
+// ── NAVIGATION ÉTAPES ──
+function allerEtape(n) {
+  document.querySelectorAll('[id^="etape-"]').forEach(el => el.classList.add('hidden'))
+  document.getElementById(`etape-${n}`).classList.remove('hidden')
+  etat.etape = n
+  mettreAJourIndicateur()
+}
+
+function mettreAJourIndicateur() {
+  for (let i = 1; i <= 4; i++) {
+    const num = document.getElementById(`step-${i}-num`)
+    if (i < etat.etape) { num.className = 'step-num done' }
+    else if (i === etat.etape) { num.className = 'step-num active' }
+    else { num.className = 'step-num inactive' }
+  }
+  for (let i = 1; i <= 3; i++) {
+    const line = document.getElementById(`line-${i}`)
+    line.className = i < etat.etape ? 'step-line done' : 'step-line inactive'
+  }
+}
+
+function allerEtape2() {
+  const depart = document.getElementById('depart').value.trim()
+  const dest = document.getElementById('destination').value.trim()
+  const dd = document.getElementById('date-debut').value
+  const df = document.getElementById('date-fin').value
+
+  if (!depart || !dest || !dd || !df) {
+    alert('Veuillez remplir tous les champs obligatoires.')
+    return
+  }
+  allerEtape(2)
+}
+
+function allerEtape3() {
+  if (!etat.vehiculeSelectionne || !etat.calcul || etat.calcul.erreur) {
+    alert('Veuillez sélectionner un véhicule valide.')
+    return
+  }
+  allerEtape(3)
+}
+
+function allerEtape4() {
+  const nom = document.getElementById('nom').value.trim()
+  const contact = document.getElementById('contact').value.trim()
+  const email = document.getElementById('email').value.trim()
+
+  if (!nom || !contact || !email) {
+    alert('Veuillez remplir les champs obligatoires (Nom, Téléphone, Email).')
+    return
+  }
+
+  // Afficher conditions chauffeur si nécessaire
+  if (etat.avecChauffeur) {
+    document.getElementById('conditions-chauffeur').classList.remove('hidden')
+  } else {
+    document.getElementById('conditions-chauffeur').classList.add('hidden')
+  }
+
+  // Récapitulatif
+  const duree = etat.calcul.duree
+  const total = etat.calcul.total
+  document.getElementById('recap-content').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <div>Véhicule</div><div><strong>${etat.vehiculeSelectionne.nom}</strong></div>
+      <div>Trajet</div><div><strong>${document.getElementById('depart').value} → ${document.getElementById('destination').value}</strong></div>
+      <div>Période</div><div><strong>${document.getElementById('date-debut').value} → ${document.getElementById('date-fin').value}</strong></div>
+      <div>Durée</div><div><strong>${duree} jour(s)</strong></div>
+      <div>Type</div><div><strong>${etat.calcul.typeApplique}</strong></div>
+      <div>Option</div><div><strong>${etat.avecChauffeur ? 'Avec chauffeur' : 'Sans chauffeur'}</strong></div>
+      <div style="font-size:1rem;font-weight:700;color:var(--vert)">Total</div>
+      <div style="font-size:1rem;font-weight:700;color:var(--vert)">${total.toLocaleString()} Ar</div>
+    </div>
+  `
+
+  document.getElementById('acompte').max = total
+  calculerReste()
+  allerEtape(4)
+}
+
+function calculerReste() {
+  const total = etat.calcul?.total || 0
+  const acompte = parseInt(document.getElementById('acompte').value) || 0
+  const reste = Math.max(0, total - acompte)
+  document.getElementById('reste-display').textContent = reste.toLocaleString() + ' Ar'
+
+  const avertAcompte = document.getElementById('avertissement-acompte')
+  if (acompte === 0) {
+    avertAcompte.classList.remove('hidden')
+  } else {
+    avertAcompte.classList.add('hidden')
+  }
+  verifierConditions()
+}
+
+function verifierConditions() {
+  const carburant = document.getElementById('cond-carburant').checked
+  const repas = etat.avecChauffeur ? document.getElementById('cond-repas').checked : true
+  const hebergement = etat.avecChauffeur ? document.getElementById('cond-hebergement').checked : true
+  const ok = carburant && repas && hebergement
+  document.getElementById('btn-soumettre').disabled = !ok
+}
+
+// ── SOUMISSION ──
+async function soumettre() {
+  const btn = document.getElementById('btn-soumettre')
+  btn.disabled = true
+  btn.textContent = '⏳ Envoi en cours...'
+
+  try {
+    const montantPaye = parseInt(document.getElementById('acompte').value) || 0
+    const total = etat.calcul.total
+    const reste = Math.max(0, total - montantPaye)
+    const statutCalendrier = montantPaye === 0 ? 'PRE_RESERVE' : 'EN_ATTENTE'
+
+    // 1. Créer client
+    const { data: client, error: clientErr } = await db.from('clients').insert({
+      nom: document.getElementById('nom').value.toUpperCase(),
+      prenom: document.getElementById('prenom').value,
+      contact: document.getElementById('contact').value,
+      email: document.getElementById('email').value,
+      adresse: document.getElementById('adresse').value,
+      cin_permis: document.getElementById('cin-permis').value,
+    }).select().single()
+
+    if (clientErr) throw clientErr
+
+    // 2. Générer ID
+    const { data: derniere } = await db.from('reservations').select('id').order('id', { ascending: false }).limit(1)
+    let nextNum = 38
+    if (derniere && derniere.length > 0) {
+      nextNum = parseInt(derniere[0].id.replace('LOC-', '')) + 1
+    }
+    const reservationId = `LOC-${String(nextNum).padStart(3, '0')}`
+
+    // 3. Créer réservation
+    const resaData = {
+      id: reservationId,
+      client_id: client.id,
+      vehicule_id: etat.vehiculeSelectionne.id,
+      depart: document.getElementById('depart').value,
+      destination: document.getElementById('destination').value,
+      date_debut: document.getElementById('date-debut').value,
+      date_fin: document.getElementById('date-fin').value,
+      duree: etat.calcul.duree,
+      heure_debut: etat.typeDemande !== '24H' ? document.getElementById('heure-debut').value : null,
+      heure_fin: etat.typeDemande !== '24H' ? document.getElementById('heure-fin').value : null,
+      option_24h: etat.typeDemande === '24H' ? etat.option24h : null,
+      type_demande: etat.typeDemande,
+      type_applique: etat.calcul.typeApplique,
+      avec_chauffeur: etat.avecChauffeur,
+      upgrade_24h: etat.calcul.upgrade24h || false,
+      motif_upgrade: etat.calcul.motifUpgrade || null,
+      depassement: etat.calcul.depassement || false,
+      prix_base: etat.calcul.prixBase,
+      supplement_applique: etat.calcul.supplementApplique || 0,
+      remise: 0,
+      total_a_payer: total,
+      montant_paye: montantPaye,
+      reste,
+      statut_paiement: reste === 0 ? 'PAYÉ' : 'NON PAYÉ',
+      statut_calendrier: statutCalendrier,
+      statut_resa: 'EN_ATTENTE',
+      cond_carburant: true,
+      cond_repas_chauffeur: etat.avecChauffeur,
+      cond_hebergement_chauf: etat.avecChauffeur,
+      conditions_acceptees: true,
+      notes: document.getElementById('notes').value,
+    }
+
+    const { error: resaErr } = await db.from('reservations').insert(resaData)
+    if (resaErr) throw resaErr
+
+    // 4. WhatsApp
+    const lienWA = genererMessageWhatsApp(
+      { ...resaData, montant_paye: montantPaye, reste },
+      client,
+      etat.vehiculeSelectionne,
+      etat.calcul
+    )
+    window.open(lienWA, '_blank')
+
+    // 5. Succès
+    document.querySelectorAll('[id^="etape-"]').forEach(el => el.classList.add('hidden'))
+    document.getElementById('steps-indicator').classList.add('hidden')
+    document.getElementById('succes-section').classList.remove('hidden')
+
+    if (montantPaye === 0) {
+      document.getElementById('msg-acompte').textContent = '• Sans acompte, la date reste disponible pour d\'autres clients'
+    }
+
+  } catch (err) {
+    document.getElementById('erreur-global').textContent = '❌ Erreur : ' + (err.message || 'Une erreur est survenue')
+    document.getElementById('erreur-global').classList.remove('hidden')
+    btn.disabled = false
+    btn.textContent = '✅ Envoyer ma demande'
+  }
+}
+</script>
+</body>
+</html>
