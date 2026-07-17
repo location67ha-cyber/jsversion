@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nos Véhicules — Location Voiture Madagascar</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="index.html" class="navbar-brand">
+    <span style="font-size:1.5rem">🚗</span>
+    <div>
+      <div class="logo-text">Location Voiture Madagascar</div>
+      <div class="logo-sub">Avec ou Sans Chauffeur</div>
+    </div>
+  </a>
+  <div class="navbar-links">
+    <a href="index.html">Accueil</a>
+    <a href="vehicules.html">Nos Voitures</a>
+    <a href="reserver.html">Réserver</a>
+    <a href="infos.html">Infos & Tarifs</a>
+    <a href="reserver.html" class="btn-nav">Réserver maintenant</a>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container">
+    <h1 class="section-title">Nos Véhicules</h1>
+    <p class="section-sub">Choisissez votre voiture — avec ou sans chauffeur</p>
+
+    <!-- Filtres -->
+    <div class="card mb-3" style="padding:1rem">
+      <div class="flex gap-2" style="flex-wrap:wrap;align-items:center">
+        <span class="text-sm font-bold">Filtrer :</span>
+        <button class="btn btn-sm btn-primary" onclick="filtrer('tous')">Tous</button>
+        <button class="btn btn-sm btn-secondary" onclick="filtrer('sans-chauffeur')">Sans chauffeur</button>
+        <button class="btn btn-sm btn-secondary" onclick="filtrer('avec-chauffeur')">Avec chauffeur</button>
+      </div>
+    </div>
+
+    <div class="grid-3" id="vehicules-liste">
+      <div class="text-muted">Chargement...</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-grid">
+    <div>
+      <div class="footer-title">🚗 Location Voiture Madagascar</div>
+      <p style="color:rgba(255,255,255,0.7);font-size:13px">ANDRIANASOLO Volandrato</p>
+    </div>
+    <div>
+      <div class="footer-title">Navigation</div>
+      <div class="footer-links">
+        <a href="index.html">Accueil</a>
+        <a href="vehicules.html">Nos Voitures</a>
+        <a href="reserver.html">Réserver</a>
+        <a href="infos.html">Infos & Conditions</a>
+      </div>
+    </div>
+    <div>
+      <div class="footer-title">Contact</div>
+      <p style="color:rgba(255,255,255,0.7);font-size:13px">📞 034 91 207 26<br>📍 67 Ha Nord Ouest, Antananarivo</p>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2026 Location Voiture Madagascar</div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script>
+let tousVehicules = []
+
+async function charger() {
+  const { data } = await db.from('vehicules').select('*').eq('actif', true).order('nom')
+  tousVehicules = data || []
+  afficher(tousVehicules)
+}
+
+function afficher(vehicules) {
+  const container = document.getElementById('vehicules-liste')
+  if (!vehicules.length) {
+    container.innerHTML = '<p class="text-muted">Aucun véhicule disponible</p>'
+    return
+  }
+  container.innerHTML = vehicules.map(v => {
+    const hasChauffeur = v.prix_chauffeur_jour || v.prix_chauffeur_nuit || v.prix_chauffeur_24h
+    return `
+    <div class="card voiture-card">
+      <div class="voiture-img">
+        <img src="${GITHUB_IMAGES}${v.image_url || 'placeholder.jpg'}"
+             alt="${v.nom}"
+             onerror="this.src='public/images/voitures/placeholder.jpg'">
+      </div>
+      <div class="voiture-nom">${v.nom}</div>
+      ${v.description ? `<p class="text-sm text-muted mb-2">${v.description}</p>` : ''}
+
+      <div class="text-xs font-bold mb-1" style="color:#374151">🚗 Sans chauffeur</div>
+      <div class="tarif-grid mb-2">
+        <div class="tarif-item">
+          <div class="t-label">JOUR</div>
+          <div class="t-val">${v.prix_normal.toLocaleString()}</div>
+          <div class="t-unit">Ar</div>
+        </div>
+        <div class="tarif-item">
+          <div class="t-label">NUIT</div>
+          <div class="t-val">${v.prix_normal.toLocaleString()}</div>
+          <div class="t-unit">Ar</div>
+        </div>
+        <div class="tarif-item">
+          <div class="t-label">24H</div>
+          <div class="t-val">${(v.prix_normal + (v.supplement_24h || 30000)).toLocaleString()}</div>
+          <div class="t-unit">Ar</div>
+        </div>
+      </div>
+      ${v.gain_12h ? `<div class="text-xs text-muted mb-2">3j+ : ${v.gain_12h.toLocaleString()} Ar/jour</div>` : ''}
+
+      <div class="text-xs font-bold mb-1" style="color:#374151">👤 Avec chauffeur</div>
+      ${hasChauffeur ? `
+        <div class="tarif-grid mb-2">
+          <div class="tarif-item" style="background:#eff6ff">
+            <div class="t-label" style="color:#1e40af">JOUR</div>
+            <div class="t-val">${v.prix_chauffeur_jour ? v.prix_chauffeur_jour.toLocaleString() : 'N/D'}</div>
+            <div class="t-unit">Ar</div>
+          </div>
+          <div class="tarif-item" style="background:#eff6ff">
+            <div class="t-label" style="color:#1e40af">NUIT</div>
+            <div class="t-val">${v.prix_chauffeur_nuit ? v.prix_chauffeur_nuit.toLocaleString() : 'N/D'}</div>
+            <div class="t-unit">Ar</div>
+          </div>
+          <div class="tarif-item" style="background:#eff6ff">
+            <div class="t-label" style="color:#1e40af">24H</div>
+            <div class="t-val">${v.prix_chauffeur_24h ? v.prix_chauffeur_24h.toLocaleString() : 'N/D'}</div>
+            <div class="t-unit">Ar</div>
+          </div>
+        </div>
+      ` : `<div class="text-xs text-muted mb-2">❌ Option non disponible</div>`}
+
+      <div class="alert alert-warning text-xs mb-2">
+        ⛽ Carburant à charge du client
+        ${hasChauffeur ? '<br>🍽️ Repas & 🏨 hébergement chauffeur à charge' : ''}
+      </div>
+
+      <a href="reserver.html?vehicule=${v.id}" class="btn btn-primary btn-full">Réserver ce véhicule</a>
+    </div>
+  `}).join('')
+}
+
+function filtrer(type) {
+  if (type === 'tous') return afficher(tousVehicules)
+  if (type === 'avec-chauffeur') {
+    afficher(tousVehicules.filter(v => v.prix_chauffeur_jour || v.prix_chauffeur_nuit || v.prix_chauffeur_24h))
+  }
+  if (type === 'sans-chauffeur') afficher(tousVehicules)
+}
+
+charger()
+</script>
+</body>
+</html>
