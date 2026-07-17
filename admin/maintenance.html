@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maintenance Admin</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="admin-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div style="font-size:1.5rem">🚗</div><div class="brand-name">Location Voiture</div><div class="brand-sub">Madagascar — Admin</div></div>
+    <nav class="sidebar-nav">
+      <a href="index.html" class="sidebar-link">📊 Dashboard</a>
+      <a href="reservations.html" class="sidebar-link">📋 Réservations</a>
+      <a href="vehicules.html" class="sidebar-link">🚗 Véhicules</a>
+      <a href="planning.html" class="sidebar-link">📅 Planning</a>
+      <a href="maintenance.html" class="sidebar-link active">🔧 Maintenance</a>
+      <a href="factures.html" class="sidebar-link">📄 Factures</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="../index.html" class="sidebar-link" style="font-size:12px">🌐 Voir le site</a>
+      <button onclick="adminLogout()" class="sidebar-link" style="background:none;border:none;cursor:pointer;color:#fca5a5;width:100%;text-align:left;font-size:13px">🚪 Déconnexion</button>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <div class="admin-header" style="display:flex;justify-content:space-between;align-items:center">
+      <h1>🔧 Maintenance</h1>
+      <button class="btn btn-primary" onclick="toggleForm()">+ Ajouter</button>
+    </div>
+
+    <!-- Formulaire -->
+    <div id="form-section" class="card mb-3 hidden" style="border:2px solid #fed7aa">
+      <h2 style="color:#ea580c;margin-bottom:1rem">Nouvelle maintenance</h2>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Véhicule *</label>
+          <select class="form-control" id="m-vehicule">
+            <option value="">-- Sélectionner --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Statut</label>
+          <select class="form-control" id="m-statut">
+            <option value="EN_COURS">En cours</option>
+            <option value="PLANIFIÉE">Planifiée</option>
+            <option value="TERMINÉE">Terminée</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date début *</label>
+          <input type="date" class="form-control" id="m-debut">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date fin *</label>
+          <input type="date" class="form-control" id="m-fin">
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <label class="form-label">Description</label>
+          <textarea class="form-control" id="m-description" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Coût estimé (Ar)</label>
+          <input type="number" class="form-control" id="m-cout" value="0">
+        </div>
+      </div>
+      <div class="flex gap-2 mt-2">
+        <button class="btn btn-secondary" onclick="toggleForm()">Annuler</button>
+        <button class="btn btn-primary" style="flex:1" onclick="ajouter()">Enregistrer</button>
+      </div>
+    </div>
+
+    <!-- Liste -->
+    <div class="card table-container">
+      <table>
+        <thead>
+          <tr><th>Véhicule</th><th>Période</th><th>Description</th><th style="text-align:right">Coût</th><th>Statut</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="tbody-maintenance">
+          <tr><td colspan="6" class="text-muted text-center">Chargement...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase-client.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+requireAdmin()
+
+async function charger() {
+  const [{ data: maintenances }, { data: vehicules }] = await Promise.all([
+    db.from('maintenances').select('*, vehicules(nom)').order('date_debut', { ascending: false }),
+    db.from('vehicules').select('id, nom').eq('actif', true).order('nom'),
+  ])
+
+  // Remplir select
+  const sel = document.getElementById('m-vehicule')
+  sel.innerHTML = '<option value="">-- Sélectionner --</option>'
+  vehicules?.forEach(v => {
+    const opt = document.createElement('option')
+    opt.value = v.id
+    opt.textContent = v.nom
+    sel.appendChild(opt)
+  })
+
+  // Afficher liste
+  const tbody = document.getElementById('tbody-maintenance')
+  if (!maintenances?.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">Aucune maintenance</td></tr>'
+    return
+  }
+
+  tbody.innerHTML = maintenances.map(m => `
+    <tr>
+      <td class="font-bold">${m.vehicules?.nom}</td>
+      <td class="text-xs"><div>${m.date_debut}</div><div>${m.date_fin}</div></td>
+      <td class="text-sm text-muted">${m.description || '—'}</td>
+      <td style="text-align:right">${m.cout?.toLocaleString()} Ar</td>
+      <td>
+        <span class="badge ${m.statut === 'EN_COURS' ? 'badge-orange' : m.statut === 'TERMINÉE' ? 'badge-vert' : 'badge-bleu'}">
+          ${m.statut}
+        </span>
+      </td>
+      <td>
+        <div class="flex gap-1">
+          ${m.statut !== 'TERMINÉE' ? `<button class="btn btn-sm btn-primary" onclick="terminer(${m.id})">✅ Terminer</button>` : ''}
+          <button class="btn btn-sm btn-danger" onclick="supprimer(${m.id})">🗑️</button>
+        </div>
+      </td>
+    </tr>
+  `).join('')
+}
+
+function toggleForm() {
+  document.getElementById('form-section').classList.toggle('hidden')
+}
+
+async function ajouter() {
+  const vehiculeId = document.getElementById('m-vehicule').value
+  const debut = document.getElementById('m-debut').value
+  const fin = document.getElementById('m-fin').value
+  if (!vehiculeId || !debut || !fin) { alert('Remplir les champs obligatoires.'); return }
+
+  await db.from('maintenances').insert({
+    vehicule_id: parseInt(vehiculeId),
+    date_debut: debut,
+    date_fin: fin,
+    description: document.getElementById('m-description').value,
+    cout: parseInt(document.getElementById('m-cout').value) || 0,
+    statut: document.getElementById('m-statut').value,
+  })
+  toggleForm()
+  charger()
+}
+
+async function terminer(id) {
+  await db.from('maintenances').update({ statut: 'TERMINÉE' }).eq('id', id)
+  charger()
+}
+
+async function supprimer(id) {
+  if (!confirm('Supprimer cette maintenance ?')) return
+  await db.from('maintenances').delete().eq('id', id)
+  charger()
+}
+
+charger()
+</script>
+</body>
+</html>
