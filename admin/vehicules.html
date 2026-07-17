@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Véhicules Admin</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="admin-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div style="font-size:1.5rem">🚗</div><div class="brand-name">Location Voiture</div><div class="brand-sub">Madagascar — Admin</div></div>
+    <nav class="sidebar-nav">
+      <a href="index.html" class="sidebar-link">📊 Dashboard</a>
+      <a href="reservations.html" class="sidebar-link">📋 Réservations</a>
+      <a href="vehicules.html" class="sidebar-link active">🚗 Véhicules</a>
+      <a href="planning.html" class="sidebar-link">📅 Planning</a>
+      <a href="maintenance.html" class="sidebar-link">🔧 Maintenance</a>
+      <a href="factures.html" class="sidebar-link">📄 Factures</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="../index.html" class="sidebar-link" style="font-size:12px">🌐 Voir le site</a>
+      <button onclick="adminLogout()" class="sidebar-link" style="background:none;border:none;cursor:pointer;color:#fca5a5;width:100%;text-align:left;font-size:13px">🚪 Déconnexion</button>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <div class="admin-header" style="display:flex;justify-content:space-between;align-items:center">
+      <h1>🚗 Gestion des véhicules</h1>
+      <button class="btn btn-primary" onclick="ouvrirFormulaire()">+ Ajouter un véhicule</button>
+    </div>
+
+    <!-- Formulaire -->
+    <div id="formulaire-section" class="card mb-3 hidden" style="border:2px solid #86efac">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+        <h2 id="form-titre" style="color:var(--vert)">Nouveau véhicule</h2>
+        <button onclick="fermerFormulaire()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#9ca3af">×</button>
+      </div>
+
+      <div class="grid-2">
+        <!-- Infos générales -->
+        <div>
+          <h3 class="text-sm font-bold mb-2" style="border-bottom:1px solid #e5e7eb;padding-bottom:8px">Informations générales</h3>
+          <div class="form-group">
+            <label class="form-label">Nom du véhicule *</label>
+            <input class="form-control" id="f-nom">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" id="f-description" rows="2"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nom du fichier image</label>
+            <input class="form-control" id="f-image" placeholder="captiva.jpg">
+            <div class="text-xs text-muted mt-1">Déposer dans <code>public/images/voitures/</code> sur GitHub</div>
+            <img id="f-apercu-img" src="" alt="" style="display:none;height:80px;width:100%;object-fit:cover;border-radius:6px;margin-top:6px">
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="f-actif" checked style="width:16px;height:16px;accent-color:var(--vert)">
+            <label for="f-actif" class="form-label" style="margin:0">Véhicule actif</label>
+          </div>
+        </div>
+
+        <!-- Tarifs -->
+        <div>
+          <h3 class="text-sm font-bold mb-2" style="border-bottom:1px solid #e5e7eb;padding-bottom:8px">Tarifs de base (Sans chauffeur)</h3>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label text-xs">Prix Normal (Ar) *</label>
+              <input type="number" class="form-control" id="f-prix-normal" oninput="calculerApercu()">
+            </div>
+            <div class="form-group">
+              <label class="form-label text-xs">Coût Normal (Ar)</label>
+              <input type="number" class="form-control" id="f-cout-normal">
+            </div>
+            <div class="form-group">
+              <label class="form-label text-xs">Gain 12H (Ar)</label>
+              <input type="number" class="form-control" id="f-gain-12h" oninput="calculerApercu()">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Supplément 24H spécifique (Ar)</label>
+            <input type="number" class="form-control" id="f-suppl-24h" placeholder="Vide = global (30 000 Ar)" oninput="calculerApercu()">
+          </div>
+
+          <h3 class="text-sm font-bold mb-2 mt-3" style="border-bottom:1px solid #e5e7eb;padding-bottom:8px">Tarifs avec chauffeur</h3>
+          <p class="text-xs text-muted mb-2">Laisser vide = option indisponible</p>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label text-xs">Prix Chauffeur JOUR</label>
+              <input type="number" class="form-control" id="f-chauf-jour" placeholder="Vide = indispo">
+            </div>
+            <div class="form-group">
+              <label class="form-label text-xs">Prix Chauffeur NUIT</label>
+              <input type="number" class="form-control" id="f-chauf-nuit" placeholder="Vide = indispo">
+            </div>
+            <div class="form-group">
+              <label class="form-label text-xs">Prix Chauffeur 24H</label>
+              <input type="number" class="form-control" id="f-chauf-24h" placeholder="Vide = indispo">
+            </div>
+            <div class="form-group">
+              <label class="form-label text-xs">Prix Chauffeur 12H (3j+)</label>
+              <input type="number" class="form-control" id="f-chauf-12h" placeholder="Vide = indispo">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aperçu tarifs -->
+      <div id="apercu-tarifs" class="hidden" style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:1rem;margin-top:1rem">
+        <div class="font-bold text-sm text-vert mb-2">👁️ Aperçu tarifs calculés</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px" id="apercu-grid"></div>
+      </div>
+
+      <div class="flex gap-2 mt-3">
+        <button class="btn btn-secondary" onclick="fermerFormulaire()">Annuler</button>
+        <button class="btn btn-primary" style="flex:1" onclick="sauvegarder()" id="btn-sauvegarder">💾 Enregistrer</button>
+      </div>
+    </div>
+
+    <!-- Liste -->
+    <div class="card table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Véhicule</th><th style="text-align:right">Prix Normal</th>
+            <th style="text-align:right">24H</th><th style="text-align:right">Gain 12H</th>
+            <th>Chauffeur</th><th>Statut</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-vehicules">
+          <tr><td colspan="7" class="text-muted text-center">Chargement...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase-client.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+requireAdmin()
+
+let vehicules = []
+let editId = null
+
+async function charger() {
+  const { data } = await db.from('vehicules').select('*').order('nom')
+  vehicules = data || []
+  afficher()
+}
+
+function afficher() {
+  document.getElementById('tbody-vehicules').innerHTML = vehicules.map(v => {
+    const hasChauffeur = v.prix_chauffeur_jour || v.prix_chauffeur_nuit || v.prix_chauffeur_24h
+    const suppl = v.supplement_24h ?? 30000
+    return `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${v.image_url ? `<img src="${GITHUB_IMAGES}${v.image_url}" alt="${v.nom}" style="width:36px;height:36px;object-fit:cover;border-radius:6px" onerror="this.style.display='none'">` : ''}
+            <span class="font-bold">${v.nom}</span>
+          </div>
+        </td>
+        <td style="text-align:right">${v.prix_normal?.toLocaleString()} Ar</td>
+        <td style="text-align:right">${(v.prix_normal + suppl).toLocaleString()} Ar</td>
+        <td style="text-align:right">${v.gain_12h?.toLocaleString() || '—'} Ar</td>
+        <td>${hasChauffeur ? '<span class="badge badge-bleu">✅ Configuré</span>' : '<span class="text-xs text-muted">Non configuré</span>'}</td>
+        <td>${v.actif ? '<span class="badge badge-vert">Actif</span>' : '<span class="badge badge-rouge">Inactif</span>'}</td>
+        <td>
+          <div class="flex gap-1">
+            <button class="btn btn-sm btn-secondary" onclick="editer(${v.id})">✏️</button>
+            <button class="btn btn-sm btn-danger" onclick="supprimer(${v.id})">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `
+  }).join('')
+}
+
+function ouvrirFormulaire() {
+  editId = null
+  document.getElementById('form-titre').textContent = '➕ Nouveau véhicule'
+  viderFormulaire()
+  document.getElementById('formulaire-section').classList.remove('hidden')
+}
+
+function fermerFormulaire() {
+  document.getElementById('formulaire-section').classList.add('hidden')
+  editId = null
+}
+
+function viderFormulaire() {
+  ['f-nom','f-description','f-image','f-cout-normal','f-gain-12h',
+   'f-suppl-24h','f-chauf-jour','f-chauf-nuit','f-chauf-24h','f-chauf-12h'].forEach(id => {
+    document.getElementById(id).value = ''
+  })
+  document.getElementById('f-prix-normal').value = ''
+  document.getElementById('f-actif').checked = true
+  document.getElementById('apercu-tarifs').classList.add('hidden')
+}
+
+function editer(id) {
+  const v = vehicules.find(x => x.id === id)
+  if (!v) return
+  editId = id
+  document.getElementById('form-titre').textContent = `✏️ Modifier — ${v.nom}`
+  document.getElementById('f-nom').value = v.nom || ''
+  document.getElementById('f-description').value = v.description || ''
+  document.getElementById('f-image').value = v.image_url || ''
+  document.getElementById('f-prix-normal').value = v.prix_normal || ''
+  document.getElementById('f-cout-normal').value = v.cout_normal || ''
+  document.getElementById('f-gain-12h').value = v.gain_12h || ''
+  document.getElementById('f-suppl-24h').value = v.supplement_24h || ''
+  document.getElementById('f-chauf-jour').value = v.prix_chauffeur_jour || ''
+  document.getElementById('f-chauf-nuit').value = v.prix_chauffeur_nuit || ''
+  document.getElementById('f-chauf-24h').value = v.prix_chauffeur_24h || ''
+  document.getElementById('f-chauf-12h').value = v.prix_chauffeur_12h || ''
+  document.getElementById('f-actif').checked = v.actif
+  calculerApercu()
+  document.getElementById('formulaire-section').classList.remove('hidden')
+  document.getElementById('formulaire-section').scrollIntoView({ behavior: 'smooth' })
+}
+
+function calculerApercu() {
+  const prix = parseInt(document.getElementById('f-prix-normal').value) || 0
+  const gain = parseInt(document.getElementById('f-gain-12h').value) || 0
+  const suppl = parseInt(document.getElementById('f-suppl-24h').value) || 30000
+  if (!prix) { document.getElementById('apercu-tarifs').classList.add('hidden'); return }
+
+  const items = [
+    { label: '1j JOUR', val: prix },
+    { label: '1j NUIT', val: prix },
+    { label: '1j 24H', val: prix + suppl },
+    { label: '3 jours', val: gain * 3 },
+    { label: '7 jours', val: gain * 7 },
+  ]
+  document.getElementById('apercu-grid').innerHTML = items.map(i => `
+    <div style="background:white;border-radius:6px;padding:8px;text-align:center;border:1px solid #e5e7eb">
+      <div class="text-xs text-muted">${i.label}</div>
+      <div class="font-bold text-vert text-sm">${i.val.toLocaleString()}</div>
+      <div class="text-xs text-muted">Ar</div>
+    </div>
+  `).join('')
+  document.getElementById('apercu-tarifs').classList.remove('hidden')
+}
+
+function getVal(id) {
+  const v = document.getElementById(id).value
+  return v === '' ? null : parseInt(v)
+}
+
+async function sauvegarder() {
+  const nom = document.getElementById('f-nom').value.trim()
+  const prix = parseInt(document.getElementById('f-prix-normal').value)
+  if (!nom || !prix) { alert('Nom et Prix Normal sont obligatoires.'); return }
+
+  const btn = document.getElementById('btn-sauvegarder')
+  btn.disabled = true
+  btn.textContent = 'Sauvegarde...'
+
+  const payload = {
+    nom,
+    description: document.getElementById('f-description').value || null,
+    image_url: document.getElementById('f-image').value || null,
+    prix_normal: prix,
+    cout_normal: getVal('f-cout-normal'),
+    gain_12h: getVal('f-gain-12h'),
+    supplement_24h: getVal('f-suppl-24h'),
+    prix_chauffeur_jour: getVal('f-chauf-jour'),
+    prix_chauffeur_nuit: getVal('f-chauf-nuit'),
+    prix_chauffeur_24h: getVal('f-chauf-24h'),
+    prix_chauffeur_12h: getVal('f-chauf-12h'),
+    actif: document.getElementById('f-actif').checked,
+    updated_at: new Date().toISOString(),
+  }
+
+  if (editId) {
+    await db.from('vehicules').update(payload).eq('id', editId)
+  } else {
+    await db.from('vehicules').insert(payload)
+  }
+
+  btn.disabled = false
+  btn.textContent = '💾 Enregistrer'
+  fermerFormulaire()
+  charger()
+}
+
+async function supprimer(id) {
+  if (!confirm('Désactiver ce véhicule ?')) return
+  await db.from('vehicules').update({ actif: false }).eq('id', id)
+  charger()
+}
+
+// Aperçu image
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('f-image').addEventListener('input', function() {
+    const img = document.getElementById('f-apercu-img')
+    if (this.value) {
+      img.src = `${GITHUB_IMAGES}${this.value}`
+      img.style.display = 'block'
+    } else {
+      img.style.display = 'none'
+    }
+  })
+})
+
+charger()
+</script>
+</body>
+</html>
