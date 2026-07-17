@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planning Admin</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .planning-wrap { overflow-x: auto; }
+    .planning-table { border-collapse: collapse; font-size: 11px; min-width: 100%; }
+    .planning-table th { background: var(--vert); color: white; padding: 6px 4px; text-align: center; white-space: nowrap; }
+    .planning-table td { padding: 3px; text-align: center; border: 1px solid #e5e7eb; min-width: 28px; }
+    .cell-libre       { background: #dcfce7; }
+    .cell-pre-reserve { background: #fef9c3; }
+    .cell-en-attente  { background: #dbeafe; }
+    .cell-reserve     { background: #fee2e2; }
+    .cell-maintenance { background: #ffedd5; }
+    .voiture-label { background: white; font-weight: 700; text-align: left; padding: 4px 8px; white-space: nowrap; position: sticky; left: 0; z-index: 5; border-right: 2px solid #e5e7eb; }
+    .type-label { background: #f9fafb; font-weight: 700; font-size: 10px; padding: 3px 6px; }
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div style="font-size:1.5rem">🚗</div><div class="brand-name">Location Voiture</div><div class="brand-sub">Madagascar — Admin</div></div>
+    <nav class="sidebar-nav">
+      <a href="index.html" class="sidebar-link">📊 Dashboard</a>
+      <a href="reservations.html" class="sidebar-link">📋 Réservations</a>
+      <a href="vehicules.html" class="sidebar-link">🚗 Véhicules</a>
+      <a href="planning.html" class="sidebar-link active">📅 Planning</a>
+      <a href="maintenance.html" class="sidebar-link">🔧 Maintenance</a>
+      <a href="factures.html" class="sidebar-link">📄 Factures</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="../index.html" class="sidebar-link" style="font-size:12px">🌐 Voir le site</a>
+      <button onclick="adminLogout()" class="sidebar-link" style="background:none;border:none;cursor:pointer;color:#fca5a5;width:100%;text-align:left;font-size:13px">🚪 Déconnexion</button>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <div class="admin-header"><h1>📅 Planning des disponibilités</h1></div>
+
+    <!-- Contrôles -->
+    <div class="flex gap-2 mb-3" style="align-items:center;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="changerMois(-1)">← Préc.</button>
+      <span class="font-bold" id="mois-label" style="min-width:140px;text-align:center"></span>
+      <button class="btn btn-secondary btn-sm" onclick="changerMois(1)">Suiv. →</button>
+    </div>
+
+    <!-- Légende -->
+    <div class="flex gap-2 mb-3" style="flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:4px;font-size:12px"><div style="width:14px;height:14px;background:#dcfce7;border:1px solid #86efac;border-radius:3px"></div> Libre</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:12px"><div style="width:14px;height:14px;background:#fef9c3;border:1px solid #fcd34d;border-radius:3px"></div> Pré-réservé</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:12px"><div style="width:14px;height:14px;background:#dbeafe;border:1px solid #93c5fd;border-radius:3px"></div> En attente</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:12px"><div style="width:14px;height:14px;background:#fee2e2;border:1px solid #fca5a5;border-radius:3px"></div> Réservé</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:12px"><div style="width:14px;height:14px;background:#ffedd5;border:1px solid #fed7aa;border-radius:3px"></div> Maintenance</div>
+    </div>
+
+    <div class="card planning-wrap">
+      <div id="planning-container">Chargement...</div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase-client.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+requireAdmin()
+
+let moisActuel = new Date().getMonth() + 1
+let anneeActuelle = new Date().getFullYear()
+
+const moisNoms = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+
+function changerMois(delta) {
+  moisActuel += delta
+  if (moisActuel > 12) { moisActuel = 1; anneeActuelle++ }
+  if (moisActuel < 1)  { moisActuel = 12; anneeActuelle-- }
+  charger()
+}
+
+function nbJoursMois(annee, mois) {
+  return new Date(annee, mois, 0).getDate()
+}
+
+function padDate(n) { return String(n).padStart(2, '0') }
+
+function getStatut(vehiculeId, jour, type, reservations, maintenances) {
+  const dateStr = `${anneeActuelle}-${padDate(moisActuel)}-${padDate(jour)}`
+
+  const enMaintenance = maintenances.some(m =>
+    m.vehicule_id === vehiculeId &&
+    dateStr >= m.date_debut && dateStr <= m.date_fin
+  )
+  if (enMaintenance) return 'MAINTENANCE'
+
+  const resasDuJour = reservations.filter(r =>
+    r.vehicule_id === vehiculeId &&
+    dateStr >= r.date_debut && dateStr <= r.date_fin &&
+    r.statut_resa !== 'ANNULÉE'
+  )
+
+  for (const r of resasDuJour) {
+    const t = r.type_applique
+    const concerne = t === '24H' || (t === 'JOUR' && type === 'JOUR') || (t === 'NUIT' && type === 'NUIT')
+    if (!concerne) continue
+    if (r.statut_resa === 'EN_ATTENTE' && r.montant_paye === 0) return 'PRE_RESERVE'
+    if (r.statut_resa === 'EN_ATTENTE' && r.montant_paye > 0) return 'EN_ATTENTE'
+    if (r.statut_resa === 'VALIDÉE' && r.montant_paye > 0) return 'RESERVE'
+    if (r.statut_resa === 'VALIDÉE' && r.montant_paye === 0) return 'PRE_RESERVE'
+  }
+  return 'LIBRE'
+}
+
+function classeStatut(s) {
+  const map = { LIBRE:'cell-libre', PRE_RESERVE:'cell-pre-reserve', EN_ATTENTE:'cell-en-attente', RESERVE:'cell-reserve', MAINTENANCE:'cell-maintenance' }
+  return map[s] || ''
+}
+
+function emojiStatut(s) {
+  const map = { LIBRE:'🟢', PRE_RESERVE:'🟡', EN_ATTENTE:'🔵', RESERVE:'🔴', MAINTENANCE:'🟠' }
+  return map[s] || '⚪'
+}
+
+async function charger() {
+  document.getElementById('mois-label').textContent = `${moisNoms[moisActuel-1]} ${anneeActuelle}`
+  document.getElementById('planning-container').textContent = 'Chargement...'
+
+  const nb = nbJoursMois(anneeActuelle, moisActuel)
+  const debut = `${anneeActuelle}-${padDate(moisActuel)}-01`
+  const fin = `${anneeActuelle}-${padDate(moisActuel)}-${padDate(nb)}`
+
+  const [{ data: reservations }, { data: maintenances }, { data: vehicules }] = await Promise.all([
+    db.from('reservations').select('*').gte('date_debut', debut).lte('date_fin', fin),
+    db.from('maintenances').select('*').gte('date_debut', debut).lte('date_fin', fin),
+    db.from('vehicules').select('*').eq('actif', true).order('nom'),
+  ])
+
+  const jours = Array.from({ length: nb }, (_, i) => i + 1)
+
+  let html = `<table class="planning-table"><thead><tr>
+    <th style="text-align:left;min-width:100px;position:sticky;left:0;background:var(--vert)">Voiture</th>
+    <th style="min-width:24px">T</th>
+    ${jours.map(j => `<th>${j}</th>`).join('')}
+  </tr></thead><tbody>`
+
+  vehicules?.forEach(v => {
+    ['JOUR', 'NUIT'].forEach((type, idx) => {
+      html += `<tr>
+        ${idx === 0 ? `<td class="voiture-label" rowspan="2">${v.nom}</td>` : ''}
+        <td class="type-label" style="color:${type==='JOUR'?'#854d0e':'#1e40af'}">${type==='JOUR'?'J':'N'}</td>
+        ${jours.map(j => {
+          const s = getStatut(v.id, j, type, reservations || [], maintenances || [])
+          return `<td class="${classeStatut(s)}" title="${v.nom} — ${type} — ${j}/${moisActuel}/${anneeActuelle} — ${s}">${emojiStatut(s)}</td>`
+        }).join('')}
+      </tr>`
+    })
+  })
+
+  html += '</tbody></table>'
+  document.getElementById('planning-container').innerHTML = html
+}
+
+charger()
+</script>
+</body>
+</html>
