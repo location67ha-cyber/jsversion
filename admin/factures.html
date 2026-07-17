@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Factures Admin</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="admin-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div style="font-size:1.5rem">🚗</div><div class="brand-name">Location Voiture</div><div class="brand-sub">Madagascar — Admin</div></div>
+    <nav class="sidebar-nav">
+      <a href="index.html" class="sidebar-link">📊 Dashboard</a>
+      <a href="reservations.html" class="sidebar-link">📋 Réservations</a>
+      <a href="vehicules.html" class="sidebar-link">🚗 Véhicules</a>
+      <a href="planning.html" class="sidebar-link">📅 Planning</a>
+      <a href="maintenance.html" class="sidebar-link">🔧 Maintenance</a>
+      <a href="factures.html" class="sidebar-link active">📄 Factures</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="../index.html" class="sidebar-link" style="font-size:12px">🌐 Voir le site</a>
+      <button onclick="adminLogout()" class="sidebar-link" style="background:none;border:none;cursor:pointer;color:#fca5a5;width:100%;text-align:left;font-size:13px">🚪 Déconnexion</button>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <div class="admin-header"><h1>📄 Factures</h1></div>
+
+    <div class="form-group mb-3" style="max-width:400px">
+      <input class="form-control" id="recherche" placeholder="🔍 Rechercher par ID, client ou voiture..." oninput="filtrerRecherche()">
+    </div>
+
+    <div class="card table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Client</th><th>Voiture</th><th>Trajet</th>
+            <th>Période</th><th style="text-align:right">Total</th>
+            <th>Paiement</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-factures">
+          <tr><td colspan="8" class="text-muted text-center">Chargement...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase-client.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+requireAdmin()
+
+let toutesReservations = []
+
+async function charger() {
+  const params = new URLSearchParams(window.location.search)
+  const idParam = params.get('id')
+
+  const { data } = await db.from('reservations')
+    .select('*, clients(*), vehicules(*)')
+    .eq('statut_resa', 'VALIDÉE')
+    .order('created_at', { ascending: false })
+
+  toutesReservations = data || []
+  afficher(toutesReservations)
+
+  if (idParam) {
+    const r = toutesReservations.find(x => x.id === idParam)
+    if (r) imprimerFacture(r)
+  }
+}
+
+function filtrerRecherche() {
+  const q = document.getElementById('recherche').value.toLowerCase()
+  const filtrees = toutesReservations.filter(r =>
+    r.id.toLowerCase().includes(q) ||
+    (r.clients?.nom || '').toLowerCase().includes(q) ||
+    (r.vehicules?.nom || '').toLowerCase().includes(q)
+  )
+  afficher(filtrees)
+}
+
+function afficher(liste) {
+  const tbody = document.getElementById('tbody-factures')
+  if (!liste.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Aucune facture</td></tr>'
+    return
+  }
+  tbody.innerHTML = liste.map(r => `
+    <tr>
+      <td class="font-bold text-vert">${r.id}</td>
+      <td>
+        <div class="font-bold text-sm">${r.clients?.nom} ${r.clients?.prenom || ''}</div>
+        <div class="text-xs text-muted">${r.clients?.email || ''}</div>
+      </td>
+      <td class="text-sm">${r.vehicules?.nom}</td>
+      <td class="text-xs"><div>📍 ${r.depart}</div><div>🏁 ${r.destination}</div></td>
+      <td class="text-xs">
+        <div>${r.date_debut} → ${r.date_fin}</div>
+        <div class="text-muted">${r.duree}j — ${r.type_applique}</div>
+      </td>
+      <td style="text-align:right" class="font-bold">${r.total_a_payer?.toLocaleString()} Ar</td>
+      <td>
+        <span class="badge ${r.statut_paiement === 'PAYÉ' ? 'badge-vert' : 'badge-rouge'}">
+          ${r.statut_paiement}
+        </span>
+      </td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="imprimerFactureId('${r.id}')">📄 Imprimer</button>
+      </td>
+    </tr>
+  `).join('')
+}
+
+function imprimerFactureId(id) {
+  const r = toutesReservations.find(x => x.id === id)
+  if (r) imprimerFacture(r)
+}
+
+function imprimerFacture(r) {
+  const contenu = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Facture ${r.id}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:Arial,sans-serif; padding:40px; color:#333; font-size:13px; }
+  .header { text-align:right; margin-bottom:30px; border-bottom:3px solid #166534; padding-bottom:20px; }
+  .header h1 { color:#166534; font-size:22px; margin-bottom:4px; }
+  .header p { color:#666; font-size:12px; }
+  .titre { text-align:center; font-size:18px; font-weight:bold; color:#166534; margin:20px 0; text-transform:uppercase; letter-spacing:2px; }
+  .meta { display:flex; justify-content:space-between; margin-bottom:20px; gap:10px; }
+  .meta-box { background:#f9f9f9; padding:10px; border-radius:6px; flex:1; }
+  .meta-box .lbl { font-size:10px; color:#888; text-transform:uppercase; margin-bottom:2px; }
+  .meta-box .val { font-weight:bold; font-size:13px; }
+  .sections { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px; }
+  .section { border:1px solid #e5e7eb; border-radius:6px; overflow:hidden; }
+  .section-title { background:#166534; color:white; padding:6px 10px; font-weight:bold; font-size:11px; text-transform:uppercase; }
+  .section-body { padding:10px; }
+  .row { display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #f3f4f6; font-size:12px; }
+  .row:last-child { border-bottom:none; }
+  .row .k { color:#666; }
+  .totaux { border:2px solid #166534; border-radius:6px; padding:12px; margin-bottom:15px; }
+  .t-row { display:flex; justify-content:space-between; padding:4px 0; font-size:13px; }
+  .t-final { font-size:16px; font-weight:bold; color:#166534; border-top:2px solid #166534; padding-top:6px; margin-top:4px; }
+  .t-reste { color:#dc2626; font-weight:bold; }
+  .conditions { background:#fffbeb; border:1px solid #fcd34d; border-radius:6px; padding:10px; margin-bottom:15px; }
+  .conditions h3 { font-size:11px; color:#92400e; margin-bottom:6px; text-transform:uppercase; }
+  .conditions p { font-size:11px; color:#78350f; margin:2px 0; }
+  .badge-paye { background:#dcfce7; color:#166534; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:bold; }
+  .badge-nonpaye { background:#fee2e2; color:#dc2626; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:bold; }
+  .footer { text-align:center; color:#888; font-size:11px; border-top:1px solid #e5e7eb; padding-top:12px; margin-top:15px; }
+  .upgrade { background:#fff7ed; border:1px solid #fed7aa; border-radius:4px; padding:6px; margin:6px 0; font-size:11px; color:#c2410c; }
+  @media print { body { padding:20px; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Location Voiture Madagascar</h1>
+  <p>Avec ou Sans Chauffeur</p>
+  <p>ANDRIANASOLO Volandrato</p>
+  <p>67 Ha Nord Ouest, Antananarivo</p>
+  <p>📞 034 91 207 26</p>
+</div>
+
+<div class="titre">Facture de Location</div>
+
+<div class="meta">
+  <div class="meta-box"><div class="lbl">Référence</div><div class="val">${r.id}</div></div>
+  <div class="meta-box"><div class="lbl">Date facture</div><div class="val">${new Date().toLocaleDateString('fr-FR')}</div></div>
+  <div class="meta-box"><div class="lbl">Statut paiement</div><div class="val"><span class="${r.statut_paiement === 'PAYÉ' ? 'badge-paye' : 'badge-nonpaye'}">${r.statut_paiement}</span></div></div>
+</div>
+
+<div class="sections">
+  <div class="section">
+    <div class="section-title">👤 Client</div>
+    <div class="section-body">
+      <div class="row"><span class="k">Nom complet</span><span>${r.clients?.nom} ${r.clients?.prenom || ''}</span></div>
+      <div class="row"><span class="k">Téléphone</span><span>${r.clients?.contact || '—'}</span></div>
+      <div class="row"><span class="k">Email</span><span>${r.clients?.email || '—'}</span></div>
+      <div class="row"><span class="k">Adresse</span><span>${r.clients?.adresse || '—'}</span></div>
+      <div class="row"><span class="k">CIN/Permis</span><span>${r.clients?.cin_permis || '—'}</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">🚗 Réservation</div>
+    <div class="section-body">
+      <div class="row"><span class="k">Véhicule</span><span>${r.vehicules?.nom}</span></div>
+      <div class="row"><span class="k">Option</span><span>${r.avec_chauffeur ? 'Avec chauffeur' : 'Sans chauffeur'}</span></div>
+      <div class="row"><span class="k">Départ</span><span>${r.depart}</span></div>
+      <div class="row"><span class="k">Destination</span><span>${r.destination}</span></div>
+      <div class="row"><span class="k">Date début</span><span>${r.date_debut}</span></div>
+      <div class="row"><span class="k">Date fin</span><span>${r.date_fin}</span></div>
+      <div class="row"><span class="k">Durée</span><span>${r.duree} jour(s)</span></div>
+      <div class="row"><span class="k">Type</span><span>${r.type_applique}</span></div>
+      ${r.heure_debut ? `<div class="row"><span class="k">Horaires</span><span>${r.heure_debut} → ${r.heure_fin}</span></div>` : ''}
+    </div>
+  </div>
+</div>
+
+${r.upgrade_24h ? `<div class="upgrade">⚠️ Upgrade automatique vers tarif 24H : ${r.motif_upgrade}</div>` : ''}
+
+<div class="totaux">
+  <div class="t-row"><span>Prix de base</span><span>${r.prix_base?.toLocaleString()} Ar</span></div>
+  ${r.remise > 0 ? `<div class="t-row"><span>Remise</span><span>- ${r.remise?.toLocaleString()} Ar</span></div>` : ''}
+  <div class="t-row t-final"><span>Total à payer</span><span>${r.total_a_payer?.toLocaleString()} Ar</span></div>
+  <div class="t-row"><span>Montant payé</span><span>${r.montant_paye?.toLocaleString()} Ar</span></div>
+  <div class="t-row t-reste"><span>Reste à payer</span><span>${r.reste?.toLocaleString()} Ar</span></div>
+</div>
+
+<div class="conditions">
+  <h3>⚠️ Conditions acceptées</h3>
+  <p>⛽ Carburant : À charge du client</p>
+  ${r.avec_chauffeur ? '<p>🍽️ Repas du chauffeur : À charge du client</p><p>🏨 Hébergement du chauffeur : À charge du client</p>' : ''}
+</div>
+
+<div class="footer">
+  <p>Merci pour votre confiance — Location Voiture Madagascar</p>
+  <p>ANDRIANASOLO Volandrato | 67 Ha Nord Ouest, Antananarivo | 034 91 207 26</p>
+  <p>Facture générée le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
+</div>
+</body>
+</html>`
+
+  const w = window.open('', '_blank')
+  w.document.write(contenu)
+  w.document.close()
+  w.focus()
+  setTimeout(() => w.print(), 600)
+}
+
+charger()
+</script>
+</body>
+</html>
